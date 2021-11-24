@@ -1,5 +1,6 @@
 
 import os
+from datetime import datetime as dt
 
 from dotenv import load_dotenv
 from selenium import webdriver
@@ -11,9 +12,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
+from email1 import send_email
+
 # CHANGE THESE
 COURSE = "CMSC351"
 SECTION = "0301"
+# SECTION = "0101" # Used for debugging
 
 URL = "https://app.testudo.umd.edu/main/dropAdd"
 
@@ -26,6 +30,7 @@ LONG_TIMEOUT = 30
 SPRING_DROP_ADD_XPATH = "//*[@id='mainContent']/div[2]/div/div[1]/div/div[2]/button[3]"
 MULTIPLE_SESSIONS_BUTTON_XPATH = "//*[@id='mainContent']/div[2]/button"
 SECTION_SEAT_COUNT_XPATH = "//*[@id='drop_add_form']/table/tbody/tr[7]/td/div/div[2]/table/tbody/tr[3]/td[3]/span"
+# SECTION_SEAT_COUNT_XPATH = "//*[@id='drop_add_form']/table/tbody/tr[7]/td/div/div[2]/table/tbody/tr[1]/td[3]/span" # Used for debugging, refers to 0101 section
 REGISTER_CANCEL_XPATH = "//*[@id='drop_add_form']/table/tbody/tr[7]/td/div/div[3]/button[2]"
 DUO_PUSH_XPATH = "//*[@id='auth_methods']/fieldset[1]/div[1]/button"
 DUO_REMEMBER_NAME = "dampen_choice" 
@@ -36,61 +41,74 @@ DROP_CONFIRM_BUTTON_XPATH = "//*[@id='drop_add_form']/table/tbody/tr[2]/td[1]/di
 
 def main():
 
-    # Load environment variables from .env
-    load_dotenv()
-
-    # Initialize chrome profile, and maximize screen
-    options = webdriver.ChromeOptions()
-    options.add_argument(f"user-data-dir={os.environ.get('CHROME_PROFILE_DIR')}")
-    options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}")
-    options.add_argument("--headless")  # Comment out for debugging, used for server
-    # options.add_argument("--start-maximized")     # For Debugging
-
-    # Initialze webdriver
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-
-    # Fetch initial url
-    driver.get(URL)
-
-    # Login
-    login(driver, os.environ.get("UMD_USERNAME"), os.environ.get("UMD_PASSWORD"))
-
-    # Wait for next page to load, then submit 2-factor authentifaction (if it exists)
     try:
-        WebDriverWait(driver, SHORT_TIMEOUT).until(EC.frame_to_be_available_and_switch_to_it((By.TAG_NAME, "iframe")))
-        duo_2fa(driver)
+        # Load environment variables from .env
+        load_dotenv()
 
-    # Webpage either never loaded or no 2fa was needed, assume the latter
-    except TimeoutException:
-        pass
+        # Initialize chrome profile, and maximize screen
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"user-data-dir={os.environ.get('CHROME_PROFILE_DIR')}")
+        options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}")
+        options.add_argument("--headless")  # Comment out for debugging, used for server
+        # options.add_argument("--start-maximized")     # For Debugging
 
-    # Click button for Spring semester drop add
-    WebDriverWait(driver, SHORT_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, 
-        SPRING_DROP_ADD_XPATH))).click()
-    
-    # Attempt to add class to see how many seats
-    try:
-        add_class(driver, COURSE, "")
+        # Initialze webdriver
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
 
-    # If it fails, assume multiple session warning. Click sign out button and try again
-    except TimeoutException:
-        driver.find_element(By.XPATH, MULTIPLE_SESSIONS_BUTTON_XPATH).click()
-        add_class(driver, COURSE, "")
+        # Fetch initial url
+        driver.get(URL)
 
-    # Check if there are seats available for Justin's section
-    WebDriverWait(driver, MED_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, 
-        SECTION_SEAT_COUNT_XPATH)))
-    seats = driver.find_element(By.XPATH, SECTION_SEAT_COUNT_XPATH).text
+        # Login
+        login(driver, os.environ.get("UMD_USERNAME"), os.environ.get("UMD_PASSWORD"))
 
-    if seats.isdigit(): # "Closed" if no seats, so not a digit
-        print("SEATS AVAILABLE")
-        driver.find_element(By.XPATH, REGISTER_CANCEL_XPATH).click()    # Cancel the registering done to check seat count
-        drop_class(driver)
-        add_class(driver, COURSE, SECTION)
-    else:
-        print("NO SEATS")
+        # Wait for next page to load, then submit 2-factor authentifaction (if it exists)
+        try:
+            WebDriverWait(driver, SHORT_TIMEOUT).until(EC.frame_to_be_available_and_switch_to_it((By.TAG_NAME, "iframe")))
+            duo_2fa(driver)
 
+        # Webpage either never loaded or no 2fa was needed, assume the latter
+        except TimeoutException:
+            pass
+
+        # Click button for Spring semester drop add
+        WebDriverWait(driver, SHORT_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, 
+            SPRING_DROP_ADD_XPATH))).click()
+        
+        # Attempt to add class to see how many seats
+        try:
+            add_class(driver, COURSE, "")
+
+        # If it fails, assume multiple session warning. Click sign out button and try again
+        except TimeoutException:
+            driver.find_element(By.XPATH, MULTIPLE_SESSIONS_BUTTON_XPATH).click()
+            add_class(driver, COURSE, "")
+
+        # Check if there are seats available for Justin's section
+        WebDriverWait(driver, MED_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, 
+            SECTION_SEAT_COUNT_XPATH)))
+        seats = driver.find_element(By.XPATH, SECTION_SEAT_COUNT_XPATH).text
+
+        if seats.isdigit(): # "Closed" if no seats, so not a digit
+            print(f"{dt.now()}: SEATS AVAILABLE")
+            driver.find_element(By.XPATH, REGISTER_CANCEL_XPATH).click()    # Cancel the registering done to check seat count
+            drop_class(driver)
+            add_class(driver, COURSE, SECTION)
+
+            # Send email
+            message = f"You've been successfully added to {COURSE} {SECTION} at {dt.now()}. There were {seats} spots available."
+            subject = f"SUCCESS: SIGNED UP FOR {COURSE} {SECTION}"
+            send_email(message, subject, os.environ.get("SENDER"), 
+                os.environ.get("RECEIVER"), os.environ.get("SENDER_PASSWORD"))
+        else:
+            print(f"{dt.now()}: NO SEATS")
+
+    # Catch all exceptions for logging and debuggin purposes, notify via 
+    except Exception as e:
+        message = f"The following error occured at {dt.now()}:\n\n{e}"
+        subject = "ERROR: SIGNUP SCRIPT"
+        send_email(message, subject, os.environ.get("SENDER"), 
+            os.environ.get("RECEIVER"), os.environ.get("SENDER_PASSWORD"))
 
 def login(driver: webdriver.Chrome, username: str, password: str, username_id="username", password_id="password"):
     """Generic login
