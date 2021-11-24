@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-from email import send_email
+from myemail import send_email
 
 # CHANGE THESE
 COURSE = "CMSC351"
