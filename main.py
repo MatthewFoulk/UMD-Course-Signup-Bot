@@ -100,6 +100,9 @@ def main():
             subject = f"SUCCESS: SIGNED UP FOR {COURSE} {SECTION}"
             send_email(message, subject, os.environ.get("SENDER"), 
                 os.environ.get("RECEIVER"), os.environ.get("SENDER_PASSWORD"))
+
+            # Send text    
+            send_email(message, "", os.environ.get("SENDER"), os.environ.get("TEXT_EMAIL"), os.environ.get("SENDER_PASSWORD"))
         else:
             print(f"{dt.now()}: NO SEATS")
 
@@ -109,6 +112,9 @@ def main():
         subject = "ERROR: SIGNUP SCRIPT"
         send_email(message, subject, os.environ.get("SENDER"), 
             os.environ.get("RECEIVER"), os.environ.get("SENDER_PASSWORD"))
+
+        # Send text    
+        send_email(message, "", os.environ.get("SENDER"), os.environ.get("TEXT_EMAIL"), os.environ.get("SENDER_PASSWORD"))
 
 def login(driver: webdriver.Chrome, username: str, password: str, username_id="username", password_id="password"):
     """Generic login
