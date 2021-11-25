@@ -48,8 +48,9 @@ def main():
         # Initialize chrome profile, and maximize screen
         options = webdriver.ChromeOptions()
         options.add_argument(f"user-data-dir={os.environ.get('CHROME_PROFILE_DIR')}")
-        options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}")
-        options.add_argument("--headless")  # Comment out for debugging, used for server
+        # options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}") # For debugging with windows pc
+        options.add_argument("--headless")  # For server, comment for debugging
+        options.add_argument("--log-level=3")   # Supress output
         # options.add_argument("--start-maximized")     # For Debugging
 
         # Initialze webdriver
@@ -108,6 +109,8 @@ def main():
 
     # Catch all exceptions for logging and debuggin purposes, notify via 
     except Exception as e:
+        print(f"{dt.now()}: (ERROR) {e}")
+
         message = f"The following error occured at {dt.now()}:\n\n{e}"
         subject = "ERROR: SIGNUP SCRIPT"
         send_email(message, subject, os.environ.get("SENDER"), 
