@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
+
 from myemail import send_email
 
 # CHANGE THESE
@@ -50,11 +51,11 @@ def main():
         options.add_argument(f"user-data-dir={os.environ.get('CHROME_PROFILE_DIR')}")
         # options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}") # For debugging with windows pc
         options.add_argument("--headless")  # For server, comment for debugging
-        options.add_argument("--log-level=3")   # Supress output
+        options.add_experimental_option('excludeSwitches', ['enable-logging']) # Disable logging
         # options.add_argument("--start-maximized")     # For Debugging
 
         # Initialze webdriver
-        service = Service(ChromeDriverManager().install())
+        service = Service(ChromeDriverManager(log_level=0).install())
         driver = webdriver.Chrome(service=service, options=options)
 
         # Fetch initial url
