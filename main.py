@@ -49,7 +49,6 @@ def main():
         # Initialize chrome profile, and maximize screen
         options = webdriver.ChromeOptions()
         options.add_argument(f"user-data-dir={os.environ.get('CHROME_PROFILE_DIR')}")
-        # options.add_argument(f"profile-directory={os.environ.get('CHROME_PROFILE')}") # For debugging with windows pc
         options.add_argument("--headless")  # For server, comment for debugging
         options.add_experimental_option('excludeSwitches', ['enable-logging']) # Disable logging
         # options.add_argument("--start-maximized")     # For Debugging
